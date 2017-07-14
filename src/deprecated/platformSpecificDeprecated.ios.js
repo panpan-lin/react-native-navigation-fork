@@ -40,7 +40,23 @@ function startTabBasedApp(params) {
     };
   });
 
+  /*SAPPHIRE CUSTOM*/
+  if(params.middleButton) {
+    Controllers.RCCEventEmitter.removeAllListeners('TabBarMiddleButtonClicked')
+    Controllers.RCCEventEmitter.addListener('TabBarMiddleButtonClicked', () => {
+      params.middleButton.onclicked();
+    });
+  }
+
   const Controller = Controllers.createClass({
+    renderMiddleButton: function(middleButtonProps) {
+      /*SAPPHIRE CUSTOM*/
+      if(middleButtonProps) {
+        return <TabBarControllerIOS.MiddleButton {...middleButtonProps} />
+      } else {
+        return null;
+      }
+    },
     render: function() {
       if (!params.drawer || (!params.drawer.left && !params.drawer.right)) {
         return this.renderBody();
@@ -68,7 +84,9 @@ function startTabBasedApp(params) {
         <TabBarControllerIOS
           id={controllerID + '_tabs'}
           style={params.tabsStyle}
-          appStyle={params.appStyle}>
+          appStyle={params.appStyle}
+          middleButton={params.middleButton}>
+            {/* CUSTOM SAPPHIRE */ this.renderMiddleButton(params.middleButton)}
           {
             params.tabs.map(function(tab, index) {
               return (

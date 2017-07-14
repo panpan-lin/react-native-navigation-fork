@@ -2,6 +2,7 @@
 #import "RCCViewController.h"
 #import <React/RCTConvert.h>
 #import "RCCManager.h"
+#import "RCCEventEmitter.h"/*SAPPHIRE CUSTOM*/
 #import "RCTHelpers.h"
 #import <React/RCTUIManager.h>
 #import "UIViewController+Rotation.h"
@@ -16,6 +17,8 @@
 
 @implementation RCCTabBarController
 
+UIButton *middleButton = nil;/*SAPPHIRE CUSTOM*/
+NSDictionary *middleButtonProps = nil;/*SAPPHIRE CUSTOM*/
 
 -(UIInterfaceOrientationMask)supportedInterfaceOrientations {
   return [self supportedControllerOrientations];
@@ -74,6 +77,9 @@
   UIColor *labelColor = nil;
   UIColor *selectedLabelColor = nil;
   NSDictionary *tabsStyle = props[@"style"];
+
+  bool displayMiddleButton = false;/*SAPPHIRE CUSTOM*/
+
   if (tabsStyle)
   {
     NSString *tabBarButtonColor = tabsStyle[@"tabBarButtonColor"];
@@ -127,6 +133,14 @@
   // go over all the tab bar items
   for (NSDictionary *tabItemLayout in children)
   {
+
+    // SAPPHIRE CUSTOM - check for middle button
+    if([tabItemLayout[@"type"] isEqualToString:@"TabBarControllerIOS.MiddleButton"]) {
+      middleButtonProps = tabItemLayout[@"props"];
+      displayMiddleButton = children.count % 2 == 1;
+      continue;
+    }
+
     // make sure the layout is valid
     if (![tabItemLayout[@"type"] isEqualToString:@"TabBarControllerIOS.Item"]) continue;
     if (!tabItemLayout[@"props"]) continue;
@@ -203,11 +217,46 @@
     }
     
     [viewControllers addObject:viewController];
+
+    // SAPPHIRE CUSTOM - add dummy view controller to make space for the middle button
+    if(displayMiddleButton && viewControllers.count == children.count / 2) {
+      [viewControllers addObject:[[UIViewController alloc] init]];
+    }
   }
-  
+
+  // SAPPHIRE CUSTOM
+  if(displayMiddleButton) {
+    int buttonWidth = [middleButtonProps[@"width"] intValue];
+    int buttonHeight = [middleButtonProps[@"height"] intValue];
+    int middleViewX = self.view.bounds.size.width/2 - buttonWidth/2;
+    int middleViewY = self.view.bounds.size.height - buttonHeight;
+
+    UIButton *middleView = [UIButton buttonWithType:UIButtonTypeCustom];
+    middleButton = middleView;
+    [middleView setFrame:CGRectMake(middleViewX, middleViewY, buttonWidth, buttonHeight)];
+
+    UIImage *iconImage = nil;
+    id icon = middleButtonProps[@"icon"];
+    if (icon) {
+      iconImage = [RCTConvert UIImage:icon];
+      [middleView setImage:iconImage forState:UIControlStateNormal];
+    }
+    UIImage *iconImageSelected = nil;
+    id selectedIcon = middleButtonProps[@"selectedIcon"];
+    if (selectedIcon) {
+      iconImageSelected = [RCTConvert UIImage:selectedIcon];
+      [middleView setImage:iconImageSelected forState:UIControlStateHighlighted];
+    }
+    
+    [middleView addTarget:self action:@selector(middleButtonClicked:) forControlEvents:UIControlEventTouchUpInside];
+
+    [self.view addSubview:middleView];
+
+  }
+
   // replace the tabs
   self.viewControllers = viewControllers;
-  
+
   [self setRotation:props];
   
   return self;
@@ -327,6 +376,7 @@
                         options: (hidden ? UIViewAnimationOptionCurveEaseIn : UIViewAnimationOptionCurveEaseOut)
                      animations:^()
      {
+       middleButton.transform = hidden ? CGAffineTransformMakeTranslation(0, self.tabBar.frame.size.height) : CGAffineTransformIdentity; /*SAPPHIRE CUSTOM*/
        self.tabBar.transform = hidden ? CGAffineTransformMakeTranslation(0, self.tabBar.frame.size.height) : CGAffineTransformIdentity;
      }
                      completion:^(BOOL finished)
@@ -342,6 +392,23 @@
   {
     completion();
   }
+}
+
+// SAPPHIRE CUSTOM
+-(void)middleButtonClicked:(id)sender {
+  [RCCEventEmitter tabBarMiddleButtonClicked:sender];
+}
+
+// SAPPHIRE CUSTOM
+-(void)viewWillTransitionToSize:(CGSize)size withTransitionCoordinator:(id<UIViewControllerTransitionCoordinator>)coordinator {
+  [coordinator animateAlongsideTransition:nil completion:^(id<UIViewControllerTransitionCoordinatorContext> context) {
+    int buttonWidth = [middleButtonProps[@"width"] intValue];
+    int buttonHeight = [middleButtonProps[@"height"] intValue];
+    int middleViewX = self.view.bounds.size.width/2 - buttonWidth/2;
+    int middleViewY = self.view.bounds.size.height - buttonHeight;
+
+    [middleButton setFrame:CGRectMake(middleViewX, middleViewY, buttonWidth, buttonHeight)];
+  }];
 }
 
 +(void)sendScreenTabChangedEvent:(UIViewController*)viewController body:(NSDictionary*)body{

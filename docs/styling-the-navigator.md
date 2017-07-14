@@ -35,7 +35,6 @@ this.props.navigator.setStyle({
 {
   // Common
   navBarTextColor: '#000000', // change the text color of the title (remembered across pushes)
-  navBarTextFontSize: 18, // change the font size of the title
   navBarTextFontFamily: 'font-name', // Changes the title font
   navBarBackgroundColor: '#f7f7f7', // change the background color of the nav bar (remembered across pushes)
 
